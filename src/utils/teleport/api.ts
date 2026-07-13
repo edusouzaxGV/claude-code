@@ -215,16 +215,30 @@ export async function fetchCodeSessionsFromSessionsAPI(): Promise<
       'x-organization-uuid': orgUUID,
     }
 
-    const response = await axiosGetWithRetry<ListSessionsResponse>(url, {
-      headers,
-    })
+    // Cap is a safety valve against stuck cursors; most accounts fit in a page or two.
+    const MAX_SESSION_PAGES = 50
+    const resources: SessionResource[] = []
+    let cursor: string | null = null
+    for (let page = 0; page < MAX_SESSION_PAGES; page++) {
+      const response: AxiosResponse<ListSessionsResponse> =
+        await axiosGetWithRetry<ListSessionsResponse>(url, {
+          headers,
+          params: cursor ? { after_id: cursor } : undefined,
+        })
 
-    if (response.status !== 200) {
-      throw new Error(`Failed to fetch code sessions: ${response.statusText}`)
+      if (response.status !== 200) {
+        throw new Error(`Failed to fetch code sessions: ${response.statusText}`)
+      }
+
+      resources.push(...response.data.data)
+
+      if (!response.data.last_id) break
+      cursor = response.data.last_id
+      if (!response.data.has_more) break
     }
 
     // Transform SessionResource[] to CodeSession[] format
-    const sessions: CodeSession[] = response.data.data.map(session => {
+    const sessions: CodeSession[] = resources.map(session => {
       // Extract repository info from git sources
       const gitSource = session.session_context.sources.find(
         (source): source is GitSource => source.type === 'git_repository',
