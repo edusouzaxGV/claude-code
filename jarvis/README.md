@@ -129,12 +129,15 @@ python run.py            # start ZEMARK — say "ZEMARK" to talk (Ctrl+C to quit
 The same brain, memory, and Kokoro voice, exposed to a browser or phone.
 
 ```bash
-pip install -e ".[livekit]"
-# download the Kokoro model files once (see kokoro-onnx releases):
-#   models/kokoro-v1.0.onnx , models/voices-v1.0.bin
-# set LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET (and GROQ_API_KEY) in .env
-python run.py livekit console     # local test; or: dev / start
+pip install -e ".[voice,livekit]"
+# put CLAUDE_CODE_OAUTH_TOKEN, GROQ_API_KEY and LIVEKIT_URL/API_KEY/API_SECRET in .env
+./scripts/start-voice.sh          # ⭐ one command: agent + HUD + opens the browser
 ```
+`start-voice.sh` validates your credentials, auto-downloads the Kokoro voice
+model on first run, launches the agent and the HUD, and opens
+`http://localhost:5173`. Click **INICIAR** and talk — the reactor reacts to your
+voice (OUVINDO) and to ZEMARK's (FALANDO). Or run the pieces manually:
+`python run.py livekit dev` (agent) + `cd web-client && npm run dev` (HUD).
 Front-end: either scaffold with `lk app create --template agent-starter-react`
 (set `agentName` to `zemark`), or use the minimal bundled client in
 [`web-client/`](web-client/README.md) — a tiny token server + `livekit-client`

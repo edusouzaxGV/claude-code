@@ -153,7 +153,10 @@ class ZemarkAssistant(Agent):
         super().__init__(instructions=build_system_prompt(cfg, memories=memories))
 
 
-@server.rtc_session(agent_name="zemark")
+# No agent_name -> the worker auto-dispatches into every room in the project,
+# so the browser client just joins a room and ZEMARK shows up. (Set an
+# agent_name here only if you later need explicit/named dispatch.)
+@server.rtc_session()
 async def entrypoint(ctx: JobContext) -> None:
     cfg = load_config()
     store = MemoryStore(cfg.memory.db_path)
