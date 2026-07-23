@@ -1,0 +1,25 @@
+{
+  "name": "zemark-web-client",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Minimal LiveKit voice web client for the ZEMARK assistant.",
+  "scripts": {
+    "token-server": "node server/token-server.js",
+    "vite": "vite",
+    "dev": "concurrently -n token,vite -c blue,green \"npm run token-server\" \"npm run vite\"",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "livekit-client": "2.21.0",
+    "livekit-server-sdk": "2.17.0",
+    "express": "4.21.2",
+    "cors": "2.8.5",
+    "dotenv": "16.4.7"
+  },
+  "devDependencies": {
+    "vite": "5.4.11",
+    "concurrently": "9.1.0"
+  }
+}

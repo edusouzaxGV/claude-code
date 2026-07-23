@@ -25,6 +25,7 @@ class ProactiveContext:
     store: MemoryStore
     last_proactive_ts: float  # epoch seconds of the last proactive utterance
     last_interaction_ts: float  # epoch seconds of the last user interaction
+    reminder_store: object | None = None  # ReminderStore, optional
 
 
 class Trigger(Protocol):
@@ -101,8 +102,90 @@ class LooseThreadTrigger:
         return None
 
 
-def default_triggers(quiet_end_hour: int = 8) -> list[Trigger]:
-    return [
-        DailyGreetingTrigger(start_hour=max(quiet_end_hour, 7), end_hour=11),
-        LooseThreadTrigger(),
-    ]
+class ReminderDueTrigger:
+    """Speak reminders the moment they come due. Never skipped.
+
+    ``bypass_guards`` tells the engine this is a *solicited* utterance, so it
+    ignores quiet-hours and the anti-nag min-gap — an explicit reminder must
+    fire on time, even at 2am or right after another proactive line.
+    """
+
+    name = "reminder_due"
+    bypass_guards = True
+
+    def check(self, ctx: ProactiveContext) -> str | None:
+        if ctx.reminder_store is None:
+            return None
+        due = ctx.reminder_store.due(ctx.now.timestamp())
+        if not due:
+            return None
+        reminder = due[0]
+        # consume it now so it doesn't repeat, even if delivery is terse
+        ctx.reminder_store.mark_fired(reminder.id)
+        return (
+            f"Lembrete que o usuário pediu: \"{reminder.text}\". "
+            "Avise agora, de forma direta e curta. Este é um lembrete explícito — NÃO pule."
+        )
+
+
+class DailySummaryTrigger:
+    """Once a day in the evening, offer a brief rundown of what's pending."""
+
+    name = "daily_summary"
+
+    def __init__(self, start_hour: int = 18, end_hour: int = 22):
+        self.start_hour = start_hour
+        self.end_hour = end_hour
+
+    def check(self, ctx: ProactiveContext) -> str | None:
+        if not (self.start_hour <= ctx.now.hour < self.end_hour):
+            return None
+        today = ctx.now.strftime("%Y-%m-%d")
+        if ctx.store.get_meta("last_summary_day") == today:
+            return None
+
+        pending = []
+        if ctx.reminder_store is not None:
+            pending = [r.text for r in ctx.reminder_store.upcoming(limit=5)]
+        # only bother if there's actually something to summarise
+        if not pending:
+            return None
+        ctx.store.set_meta("last_summary_day", today)
+        itens = "; ".join(pending)
+        return (
+            "Fim de tarde. Faça um resumo curtíssimo dos lembretes/pendências e "
+            f"ofereça ajuda para fechar o dia. Pendências: {itens}."
+        )
+
+
+class PendingProjectTrigger:
+    """Occasionally nudge about an ongoing project ZEMARK has noted, at most once/day."""
+
+    name = "pending_project"
+
+    def check(self, ctx: ProactiveContext) -> str | None:
+        today = ctx.now.strftime("%Y-%m-%d")
+        if ctx.store.get_meta("last_project_nudge_day") == today:
+            return None
+        projects = [m for m in ctx.store.recent(limit=20) if m.kind == "project"]
+        if not projects:
+            return None
+        ctx.store.set_meta("last_project_nudge_day", today)
+        proj = projects[0]
+        return (
+            f"Você tem um projeto em andamento que anotei: \"{proj.text}\". "
+            "Pergunte, de forma leve e breve, se quer avançar nele agora. "
+            "Se não parecer o momento, responda SKIP."
+        )
+
+
+def default_triggers(quiet_end_hour: int = 8, reminder_store=None) -> list[Trigger]:
+    triggers: list[Trigger] = []
+    if reminder_store is not None:
+        triggers.append(ReminderDueTrigger())  # highest priority
+    triggers.append(DailyGreetingTrigger(start_hour=max(quiet_end_hour, 7), end_hour=11))
+    triggers.append(LooseThreadTrigger())
+    if reminder_store is not None:
+        triggers.append(DailySummaryTrigger())
+    triggers.append(PendingProjectTrigger())
+    return triggers

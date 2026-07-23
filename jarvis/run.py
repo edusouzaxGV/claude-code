@@ -61,6 +61,8 @@ def cmd_memory() -> int:
     from zemark.config import load_config
     from zemark.memory.store import MemoryStore
 
+    from zemark.reminders import ReminderStore
+
     cfg = load_config()
     store = MemoryStore(cfg.memory.db_path)
     mems = store.all()
@@ -71,6 +73,17 @@ def cmd_memory() -> int:
         for m in mems:
             print(f"  [{m.kind} · {m.confidence:.2f}] {m.text}")
     store.close()
+
+    reminders = ReminderStore(cfg.memory.db_path)
+    pend = reminders.upcoming(limit=20)
+    if pend:
+        from datetime import datetime
+
+        print(f"\n{len(pend)} lembrete(s) pendente(s):")
+        for r in pend:
+            quando = datetime.fromtimestamp(r.due_ts).astimezone().strftime("%d/%m %H:%M")
+            print(f"  [{quando}] {r.text}")
+    reminders.close()
     return 0
 
 

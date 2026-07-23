@@ -158,7 +158,10 @@ async def entrypoint(ctx: JobContext) -> None:
     cfg = load_config()
     store = MemoryStore(cfg.memory.db_path)
 
-    tool_server, allowed = build_tool_server(store)
+    from .reminders import ReminderStore
+
+    reminders = ReminderStore(cfg.memory.db_path)
+    tool_server, allowed = build_tool_server(store, reminders)
     brain = ClaudeBrain(cfg, tool_server=tool_server, allowed_tools=allowed)
     await brain.start()
 

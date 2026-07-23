@@ -25,10 +25,10 @@ separates a real Jarvis from a toy. ZEMARK does all of it:
 | **Low latency** | Groq Whisper STT (free, ~real-time) + streamed LLM text → TTS starts speaking on the first sentence. Kokoro runs 10×+ real-time on Apple Silicon. |
 | **Streaming, not record-then-respond** | Pipecat pipeline streams audio both ways. |
 | **Barge-in / interruption** | Silero VAD on the user aggregator → interruptions are automatic. |
-| **Tool calling** | In-process MCP tools (time, memory, open URL/app, notify) + Claude Code's built-in `WebSearch`/`WebFetch`. |
+| **Tool calling** | In-process MCP tools — time, memory, **reminders with time** ("me lembra às 15h"), **weather** (wttr.in, no key), **media control** (Music/Spotify), open URL/app, notify — plus Claude Code's built-in `WebSearch`/`WebFetch`. |
 | **Persistent memory** | Local SQLite + FTS5. `remember` / `recall` / `forget`. |
 | **Auto-learning** | After each conversation a reflection pass distils durable facts about you and reinforces them — it gets to know you over time. |
-| **Proactive** | A background loop with tasteful triggers lets ZEMARK open the conversation (morning check-in, loose follow-up threads), with quiet-hours and anti-nag guards. |
+| **Proactive** | A background loop with tasteful triggers lets ZEMARK open the conversation — due **reminders** (delivered on time, even in quiet hours), morning check-in, loose follow-up threads, an evening summary, project nudges — with quiet-hours and anti-nag guards. |
 | **Custom wake word** | “ZEMARK” via a zero-setup phrase gate, upgradable to Porcupine or openWakeWord. |
 
 ---
@@ -113,8 +113,10 @@ pip install -e ".[livekit]"
 # set LIVEKIT_URL / LIVEKIT_API_KEY / LIVEKIT_API_SECRET (and GROQ_API_KEY) in .env
 python run.py livekit console     # local test; or: dev / start
 ```
-Front-end: scaffold a client with `lk app create --template agent-starter-react`
-and set its `agentName` to `zemark`.
+Front-end: either scaffold with `lk app create --template agent-starter-react`
+(set `agentName` to `zemark`), or use the minimal bundled client in
+[`web-client/`](web-client/README.md) — a tiny token server + `livekit-client`
+page with a “Falar com ZEMARK” button.
 
 ---
 
@@ -127,7 +129,9 @@ and set its `agentName` to `zemark`.
 | `openwakeword` | Train `ZEMARK.onnx` in the official Colab notebook, set `ZEMARK_OWW_ONNX`. `pip install -e ".[wake]"` | Fully open + local. |
 
 Select with `ZEMARK_WAKE_BACKEND`. The desktop pipeline always phrase-gates the
-STT stream; the frame backends target a low-power capture path.
+STT stream; the frame backends target a low-power capture path. Full setup +
+tuning walkthrough: [`docs/wake-training.md`](docs/wake-training.md). Tune a
+trained model live with `python scripts/test_wake.py`.
 
 ---
 
@@ -143,7 +147,7 @@ quiet hours, audio rates. Sensible defaults throughout.
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest         # 33 tests: config, persona, wake matching, memory,
+python -m pytest         # 49 tests: config, persona, wake matching, memory,
                          # reflection (auto-learn), proactivity
 ```
 The tests cover the pure-Python core and need no audio hardware or API keys.

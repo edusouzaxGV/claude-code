@@ -19,6 +19,7 @@ from ..config import Config
 from ..memory.reflection import ReflectionEngine
 from ..memory.store import MemoryStore
 from ..proactive.engine import ProactiveEngine
+from ..reminders import ReminderStore
 from ..stt.factory import build_stt
 from ..tts.factory import build_tts
 from ..tools.builtin import build_tool_server
@@ -27,9 +28,10 @@ from .wake_gate import WakeGate
 
 
 class DesktopAgent:
-    def __init__(self, cfg: Config, store: MemoryStore):
+    def __init__(self, cfg: Config, store: MemoryStore, reminders: ReminderStore | None = None):
         self._cfg = cfg
         self._store = store
+        self._reminders = reminders or ReminderStore(cfg.memory.db_path)
         self._brain: ClaudeBrain | None = None
         self._worker = None
         self._runner = None
@@ -54,7 +56,7 @@ class DesktopAgent:
         from pipecat.workers.runner import WorkerRunner
 
         # brain + tools
-        tool_server, allowed = build_tool_server(self._store)
+        tool_server, allowed = build_tool_server(self._store, self._reminders)
         self._brain = ClaudeBrain(self._cfg, tool_server=tool_server, allowed_tools=allowed)
         await self._brain.start()
 
@@ -111,6 +113,7 @@ class DesktopAgent:
             draft=self._brain.complete,
             speak=self._speak,
             is_busy=lambda: bool(self._wake_gate and self._wake_gate.conversation_open),
+            reminder_store=self._reminders,
         )
 
     async def _speak(self, text: str) -> None:
@@ -161,6 +164,7 @@ class DesktopAgent:
                 self._reflect_task.cancel()
             if self._brain is not None:
                 await self._brain.aclose()
+            self._reminders.close()
 
 
 async def run_desktop(cfg: Config, store: MemoryStore) -> None:

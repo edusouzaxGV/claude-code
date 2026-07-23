@@ -42,13 +42,15 @@ class ProactiveEngine:
         *,
         is_busy: BusyFn | None = None,
         triggers: list[Trigger] | None = None,
+        reminder_store=None,
     ):
         self._cfg = cfg
         self._store = store
         self._draft = draft
         self._speak = speak
         self._is_busy = is_busy or (lambda: False)
-        self._triggers = triggers or default_triggers(cfg.proactive.quiet_end_hour)
+        self._reminder_store = reminder_store
+        self._triggers = triggers or default_triggers(cfg.proactive.quiet_end_hour, reminder_store)
         self._task: asyncio.Task | None = None
         self._stop = asyncio.Event()
         self._last_proactive_ts = 0.0
@@ -90,7 +92,7 @@ class ProactiveEngine:
                 continue
 
     async def _tick(self) -> None:
-        if self._is_busy() or self._in_quiet_hours() or self._too_soon():
+        if self._is_busy():
             return
 
         ctx = ProactiveContext(
@@ -98,9 +100,14 @@ class ProactiveEngine:
             store=self._store,
             last_proactive_ts=self._last_proactive_ts,
             last_interaction_ts=self._last_interaction_ts,
+            reminder_store=self._reminder_store,
         )
 
+        guards_block = self._in_quiet_hours() or self._too_soon()
         for trigger in self._triggers:
+            # solicited triggers (e.g. due reminders) ignore quiet-hours / min-gap
+            if guards_block and not getattr(trigger, "bypass_guards", False):
+                continue
             description = trigger.check(ctx)
             if not description:
                 continue

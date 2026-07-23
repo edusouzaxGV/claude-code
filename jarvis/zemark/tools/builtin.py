@@ -17,11 +17,16 @@ from __future__ import annotations
 
 import platform
 import subprocess
+import urllib.parse
+import urllib.request
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from ..timeparse import parse_when
+
 if TYPE_CHECKING:  # pragma: no cover
     from ..memory.store import MemoryStore
+    from ..reminders import ReminderStore
 
 
 def _text(content: str) -> dict:
@@ -58,7 +63,41 @@ def notify(title: str, message: str) -> str:
         return f"Falha ao notificar: {exc}"
 
 
-def build_tool_server(store: "MemoryStore"):
+def get_weather(city: str) -> str:
+    """Fetch a short current-weather line from wttr.in (free, no API key)."""
+    try:
+        q = urllib.parse.quote(city.strip() or "")
+        url = f"https://wttr.in/{q}?format=%l:+%c+%t,+sensacao+%f,+umidade+%h&m&lang=pt"
+        req = urllib.request.Request(url, headers={"User-Agent": "curl/8"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            return resp.read().decode("utf-8", "replace").strip()
+    except Exception as exc:  # pragma: no cover - network dependent
+        return f"Não consegui obter o clima agora: {exc}"
+
+
+def media_control(action: str) -> str:
+    """Best-effort media control on macOS (Music/Spotify) via AppleScript."""
+    action = action.strip().lower()
+    mapping = {
+        "play": "playpause", "pause": "playpause", "toggle": "playpause",
+        "next": "next track", "próxima": "next track", "proxima": "next track",
+        "previous": "previous track", "anterior": "previous track",
+    }
+    cmd = mapping.get(action, "playpause")
+    if platform.system() != "Darwin":  # pragma: no cover - platform dependent
+        return "Controle de mídia só está disponível no macOS por enquanto."
+    try:
+        script = (
+            f'if application "Spotify" is running then tell application "Spotify" to {cmd} '
+            f'else tell application "Music" to {cmd}'
+        )
+        subprocess.Popen(["osascript", "-e", script])
+        return f"Mídia: {action}."
+    except Exception as exc:  # pragma: no cover
+        return f"Falha no controle de mídia: {exc}"
+
+
+def build_tool_server(store: "MemoryStore", reminder_store: "ReminderStore | None" = None):
     """Create the in-process MCP server + the list of allowed tool names.
 
     Returns ``(server, allowed_tool_names)``. ``allowed_tool_names`` also
@@ -124,12 +163,19 @@ def build_tool_server(store: "MemoryStore"):
     async def notify_tool(args):  # noqa: ANN001
         return _text(notify(str(args.get("title", "ZEMARK")), str(args.get("message", ""))))
 
-    server = create_sdk_mcp_server(
-        name="zemark",
-        version="1.0.0",
-        tools=[get_time, remember, recall, forget, open_tool, notify_tool],
-    )
+    @tool("weather", "Consulta o clima atual de uma cidade.", {"city": str})
+    async def weather_tool(args):  # noqa: ANN001
+        return _text(get_weather(str(args.get("city", ""))))
 
+    @tool(
+        "media",
+        "Controla a mídia (play/pause/próxima/anterior) no Music/Spotify.",
+        {"action": str},
+    )
+    async def media_tool(args):  # noqa: ANN001
+        return _text(media_control(str(args.get("action", "toggle"))))
+
+    tools = [get_time, remember, recall, forget, open_tool, notify_tool, weather_tool, media_tool]
     allowed = [
         "mcp__zemark__get_time",
         "mcp__zemark__remember",
@@ -137,8 +183,57 @@ def build_tool_server(store: "MemoryStore"):
         "mcp__zemark__forget",
         "mcp__zemark__open",
         "mcp__zemark__notify",
+        "mcp__zemark__weather",
+        "mcp__zemark__media",
         # built-in Claude Code web tools — no API key required
         "WebSearch",
         "WebFetch",
     ]
+
+    if reminder_store is not None:
+        @tool(
+            "set_reminder",
+            "Cria um lembrete com horário. 'when' aceita linguagem natural em "
+            "português: 'em 10 minutos', 'às 15h', 'amanhã às 9h'.",
+            {"text": str, "when": str},
+        )
+        async def set_reminder(args):  # noqa: ANN001
+            text = str(args.get("text", "")).strip()
+            when = str(args.get("when", "")).strip()
+            if not text or not when:
+                return _text("Preciso do lembrete e de quando.")
+            due = parse_when(when)
+            if due is None:
+                return _text("Não entendi o horário. Tente 'em 10 minutos' ou 'às 15h'.")
+            reminder_store.add(text, due)
+            quando = datetime.fromtimestamp(due).astimezone().strftime("%d/%m às %H:%M")
+            return _text(f"Lembrete criado: {text} — {quando}.")
+
+        @tool("list_reminders", "Lista os próximos lembretes pendentes.", {})
+        async def list_reminders(args):  # noqa: ANN001
+            items = reminder_store.upcoming(limit=10)
+            if not items:
+                return _text("Nenhum lembrete pendente.")
+            lines = []
+            for r in items:
+                quando = datetime.fromtimestamp(r.due_ts).astimezone().strftime("%d/%m %H:%M")
+                lines.append(f"- {quando}: {r.text}")
+            return _text("\n".join(lines))
+
+        @tool("cancel_reminder", "Cancela lembretes que casem com a descrição.", {"query": str})
+        async def cancel_reminder(args):  # noqa: ANN001
+            query = str(args.get("query", "")).strip()
+            if not query:
+                return _text("Preciso saber qual lembrete cancelar.")
+            n = reminder_store.cancel_matching(query)
+            return _text(f"Cancelei {n} lembrete(s).")
+
+        tools += [set_reminder, list_reminders, cancel_reminder]
+        allowed += [
+            "mcp__zemark__set_reminder",
+            "mcp__zemark__list_reminders",
+            "mcp__zemark__cancel_reminder",
+        ]
+
+    server = create_sdk_mcp_server(name="zemark", version="1.0.0", tools=tools)
     return server, allowed
