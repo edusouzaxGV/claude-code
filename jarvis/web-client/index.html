@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-br">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Z.E.M.A.R.K.</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div class="hud">
+      <!-- corner brackets -->
+      <span class="corner tl"></span><span class="corner tr"></span>
+      <span class="corner bl"></span><span class="corner br"></span>
+
+      <header class="hud-top">
+        <div class="brand">Z.E.M.A.R.K.</div>
+        <div class="sub">personal assistant · online</div>
+      </header>
+
+      <canvas id="reactor"></canvas>
+
+      <div class="state-readout">
+        <span id="state-dot" class="dot"></span>
+        <span id="state-label">EM ESPERA</span>
+      </div>
+
+      <div id="transcript" class="transcript"></div>
+
+      <footer class="hud-bottom">
+        <button id="talk" class="talk">INICIAR</button>
+        <div id="status" class="status">Pronto.</div>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,149 @@
+/* ZEMARK HUD — J.A.R.V.I.S.-style sci-fi shell. */
+:root {
+  --cyan: #5ce1ff;
+  --cyan-dim: rgba(92, 225, 255, 0.5);
+  --gold: #ffd27a;
+  --bg0: #02060b;
+  --bg1: #061019;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background:
+    radial-gradient(circle at 50% 45%, var(--bg1), var(--bg0) 70%),
+    var(--bg0);
+  color: var(--cyan);
+  font-family: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* faint scanning grid overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(92, 225, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(92, 225, 255, 0.04) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none;
+  mask-image: radial-gradient(circle at 50% 50%, black 40%, transparent 80%);
+}
+
+.hud {
+  position: relative;
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.corner {
+  position: fixed;
+  width: 46px;
+  height: 46px;
+  border: 2px solid var(--cyan-dim);
+  opacity: 0.7;
+}
+.corner.tl { top: 22px; left: 22px; border-right: 0; border-bottom: 0; }
+.corner.tr { top: 22px; right: 22px; border-left: 0; border-bottom: 0; }
+.corner.bl { bottom: 22px; left: 22px; border-right: 0; border-top: 0; }
+.corner.br { bottom: 22px; right: 22px; border-left: 0; border-top: 0; }
+
+.hud-top {
+  position: fixed;
+  top: 34px;
+  text-align: center;
+  letter-spacing: 0.5em;
+}
+.brand {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-shadow: 0 0 18px var(--cyan-dim);
+}
+.sub {
+  margin-top: 6px;
+  font-size: 0.7rem;
+  letter-spacing: 0.35em;
+  opacity: 0.55;
+  text-transform: uppercase;
+}
+
+#reactor {
+  width: min(70vh, 90vw);
+  height: min(70vh, 90vw);
+  display: block;
+}
+
+.state-readout {
+  position: fixed;
+  bottom: 150px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  letter-spacing: 0.35em;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 12px var(--cyan);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+.transcript {
+  position: fixed;
+  bottom: 110px;
+  max-width: 60ch;
+  text-align: center;
+  font-size: 0.85rem;
+  opacity: 0.8;
+  min-height: 1.2em;
+  padding: 0 1rem;
+  color: #cfeffb;
+  text-shadow: 0 0 8px rgba(92, 225, 255, 0.3);
+}
+
+.hud-bottom {
+  position: fixed;
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.talk {
+  font-family: inherit;
+  font-size: 0.95rem;
+  letter-spacing: 0.3em;
+  padding: 0.8rem 2.4rem;
+  color: var(--cyan);
+  background: rgba(92, 225, 255, 0.06);
+  border: 1px solid var(--cyan-dim);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.18s;
+  text-transform: uppercase;
+}
+.talk:hover:not(:disabled) {
+  background: rgba(92, 225, 255, 0.16);
+  box-shadow: 0 0 20px rgba(92, 225, 255, 0.35);
+}
+.talk:disabled { opacity: 0.4; cursor: default; }
+
+.status { font-size: 0.75rem; opacity: 0.6; letter-spacing: 0.15em; min-height: 1em; }
+.status.error { color: #ff6b6b; }
+.status.connected { color: #7CFFB2; }
+
+/* state colouring hook */
+.hud[data-state="speaking"] { --cyan: var(--gold); }
+.hud[data-state="thinking"] { --cyan: var(--gold); }
