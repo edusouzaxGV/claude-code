@@ -15,6 +15,28 @@ Portuguese out of the box (everything is configurable).
 
 ---
 
+## ⚡ Test in 2 minutes (text mode, no audio)
+
+Skip the whole audio stack and talk to ZEMARK's real brain — memory,
+auto-learning, tools (reminders/weather/…), and proactivity all run — by typing:
+
+```bash
+cd jarvis
+pip install claude-agent-sdk python-dotenv        # that's all text mode needs
+npm install -g @anthropic-ai/claude-code && claude setup-token   # subscription auth
+export CLAUDE_CODE_OAUTH_TOKEN=sk-ant-oat01-...   # from setup-token
+python run.py doctor        # sanity check
+python run.py chat          # 💬 start typing
+```
+
+Try: `me lembra de beber água em 1 minuto` (watch ZEMARK speak up on its own),
+`qual o clima em São Paulo?`, `lembra que eu prefiro respostas curtas`, then
+`/memoria` and `/lembretes`. `/sair` runs a final auto-learn pass.
+
+When you're ready for voice, do the full **Setup** below.
+
+---
+
 ## Why this isn't mediocre
 
 The research behind the design (GitHub, YouTube, Reddit/X) agreed on what

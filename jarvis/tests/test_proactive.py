@@ -74,9 +74,14 @@ def test_loose_thread_detects_followup_promise(store):
     assert res is not None and "sequência" in res.lower()
 
 
+def _cfg_no_quiet():
+    # deterministic: quiet hours off (start==end), no anti-nag gap
+    return Config(proactive=ProactiveConfig(quiet_start_hour=0, quiet_end_hour=0, min_gap_seconds=0))
+
+
 @pytest.mark.asyncio
 async def test_engine_respects_skip(store):
-    cfg = Config()
+    cfg = _cfg_no_quiet()
 
     async def draft_skip(_system_prompt: str) -> str:
         return "SKIP"
@@ -96,7 +101,7 @@ async def test_engine_respects_skip(store):
 
 @pytest.mark.asyncio
 async def test_engine_speaks_when_not_skipped(store):
-    cfg = Config()
+    cfg = _cfg_no_quiet()
 
     async def draft(_system_prompt: str) -> str:
         return "Bom dia, chefe. Posso ajudar em algo?"

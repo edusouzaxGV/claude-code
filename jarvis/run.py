@@ -3,6 +3,7 @@
 
 Usage:
     python run.py                 # start the desktop voice agent (wake word: ZEMARK)
+    python run.py chat            # TEXT mode — test the brain with no audio/mic
     python run.py doctor          # check environment / auth without starting audio
     python run.py memory          # print what ZEMARK remembers
     python run.py livekit ...     # run the web/phone agent (passes args to LiveKit CLI)
@@ -108,6 +109,27 @@ def cmd_desktop() -> int:
     return 0
 
 
+def cmd_chat() -> int:
+    from zemark.chat import run_chat
+    from zemark.config import load_config
+    from zemark.memory.store import MemoryStore
+    from zemark.reminders import ReminderStore
+
+    cfg = load_config()
+    _scrub_api_key(cfg)
+    if not os.getenv("CLAUDE_CODE_OAUTH_TOKEN") and cfg.brain.force_subscription_auth:
+        print("⚠️  CLAUDE_CODE_OAUTH_TOKEN não definido — rode 'python run.py doctor'. Tentando mesmo assim…")
+
+    store = MemoryStore(cfg.memory.db_path)
+    reminders = ReminderStore(cfg.memory.db_path)
+    try:
+        asyncio.run(run_chat(cfg, store, reminders))
+    finally:
+        store.close()
+        reminders.close()
+    return 0
+
+
 def cmd_livekit(argv: list[str]) -> int:
     from zemark.config import load_config
 
@@ -129,6 +151,8 @@ def main() -> int:
         return cmd_desktop()
     if cmd == "doctor":
         return cmd_doctor()
+    if cmd in {"chat", "texto"}:
+        return cmd_chat()
     if cmd == "memory":
         return cmd_memory()
     if cmd == "livekit":

@@ -43,7 +43,6 @@ class DesktopAgent:
     async def build(self) -> None:
         from pipecat.audio.vad.silero import SileroVADAnalyzer
         from pipecat.pipeline.pipeline import Pipeline
-        from pipecat.pipeline.worker import PipelineParams, PipelineWorker
         from pipecat.processors.aggregators.llm_context import LLMContext
         from pipecat.processors.aggregators.llm_response_universal import (
             LLMContextAggregatorPair,
@@ -53,7 +52,19 @@ class DesktopAgent:
             LocalAudioTransport,
             LocalAudioTransportParams,
         )
-        from pipecat.workers.runner import WorkerRunner
+
+        # Pipecat 1.6 renamed PipelineTask->PipelineWorker and
+        # PipelineRunner->WorkerRunner (old names kept as deprecated aliases,
+        # removed in 2.0). Try the new names, fall back to the classic ones so
+        # ZEMARK starts across the 1.x line.
+        try:
+            from pipecat.pipeline.worker import PipelineParams, PipelineWorker as _Worker
+        except ImportError:  # pragma: no cover - version dependent
+            from pipecat.pipeline.task import PipelineParams, PipelineTask as _Worker
+        try:
+            from pipecat.workers.runner import WorkerRunner as _Runner
+        except ImportError:  # pragma: no cover - version dependent
+            from pipecat.pipeline.runner import PipelineRunner as _Runner
 
         # brain + tools
         tool_server, allowed = build_tool_server(self._store, self._reminders)
@@ -93,8 +104,8 @@ class DesktopAgent:
                 assistant_agg,
             ]
         )
-        self._worker = PipelineWorker(pipeline, params=PipelineParams(enable_metrics=True))
-        self._runner = WorkerRunner()
+        self._worker = _Worker(pipeline, params=PipelineParams(enable_metrics=True))
+        self._runner = _Runner()
 
         # auto-learning (reflection after each conversation)
         if self._cfg.memory.auto_learn:
@@ -156,8 +167,12 @@ class DesktopAgent:
         if self._reflection is not None:
             self._reflect_task = asyncio.create_task(self._reflect_watcher())
         try:
-            await self._runner.add_workers(self._worker)
-            await self._runner.run()
+            # WorkerRunner (1.6): add_workers()+run(); PipelineRunner (classic): run(task)
+            if hasattr(self._runner, "add_workers"):
+                await self._runner.add_workers(self._worker)
+                await self._runner.run()
+            else:
+                await self._runner.run(self._worker)
         finally:
             await self._proactive.stop()
             if self._reflect_task is not None:
