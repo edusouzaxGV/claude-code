@@ -156,7 +156,7 @@ async def run_chat(cfg: Config, store: MemoryStore, reminders: ReminderStore) ->
         return
 
     print(f"💬 {cfg.assistant_name} em modo texto. Converse à vontade. /ajuda para comandos, /sair para sair.\n")
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     try:
         while True:
             try:
