@@ -1,0 +1,20 @@
+# ZEMARK — core runtime dependencies
+#
+# Pin Pipecat to 1.6.x: the desktop pipeline uses the 1.6 API
+# (PipelineWorker/WorkerRunner, LLMContext, VAD-on-aggregator).
+#
+# macOS Apple Silicon: install portaudio first ->  brew install portaudio
+# (and espeak-ng for Kokoro G2P fallback ->        brew install espeak-ng)
+
+# Brain — runs on your Claude Pro/Max subscription (no paid API key)
+claude-agent-sdk>=0.2,<0.3
+
+# Voice pipeline (desktop). Extras pull in Silero VAD, local Whisper,
+# Kokoro TTS, and the Groq STT service.
+pipecat-ai[local,silero,whisper,kokoro,groq]==1.6.*
+
+# Config
+python-dotenv>=1.0
+
+# numpy is used by the wake-frame detectors and TTS glue
+numpy>=1.26

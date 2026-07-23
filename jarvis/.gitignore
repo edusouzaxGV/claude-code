@@ -1,0 +1,22 @@
+# Secrets & local config
+.env
+
+# ZEMARK runtime data (memory DB, downloaded models)
+data/
+models/*.onnx
+models/*.bin
+models/*.ppn
+models/*.tflite
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/

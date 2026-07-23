@@ -1,0 +1,6 @@
+# Optional — hardware-grade wake-word backends for a low-power, always-listening
+# "ZEMARK" trigger. The default 'stt_phrase' backend needs none of these.
+
+openwakeword>=0.6       # train a ZEMARK.onnx in the official Colab notebook
+pvporcupine>=3.0        # or: type-to-train a .ppn in the Picovoice console
+sounddevice>=0.4        # mic capture for the frame detectors

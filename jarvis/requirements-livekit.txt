@@ -1,0 +1,5 @@
+# Optional — the LiveKit web/phone front-end (the "both" interface).
+# Install on top of requirements.txt when you want a browser/phone client.
+
+livekit-agents[silero,turn-detector,groq]~=1.6
+kokoro-onnx>=0.4        # shared Kokoro voice for the LiveKit TTS wrapper
